@@ -723,10 +723,18 @@ fn column_to_arrow_data_type(column: &Column) -> Result<DataType> {
     })
 }
 
+/// Represents the underlying data storage for `Rows`.
+/// This can be either a `RowBatchBuilder` for building rows,
+/// or a pre-existing `RecordBatch`.
+enum RowsData {
+    Builder(RowBatchBuilder),
+    RecordBatch(RecordBatch),
+}
+
 /// High-level rows abstraction with buffered batch conversion
 /// This provides a user-friendly API while maintaining optimal performance
 pub struct Rows {
-    builder: RowBatchBuilder,
+    data: RowsData,
     schema: Arc<Schema>,
     column_count: usize,
     // Row buffering for improved performance
@@ -741,7 +749,7 @@ impl Rows {
         let schema = builder.schema.clone();
 
         Ok(Self {
-            builder,
+            data: RowsData::Builder(builder),
             schema,
             column_count: column_schemas.len(),
             row_buffer: Vec::with_capacity(row_buffer_size),
@@ -760,7 +768,7 @@ impl Rows {
             RowBatchBuilder::with_arrow_schema(column_schemas, arrow_schema.clone(), capacity)?;
 
         Ok(Self {
-            builder,
+            data: RowsData::Builder(builder),
             schema: arrow_schema,
             column_count: column_schemas.len(),
             row_buffer: Vec::with_capacity(row_buffer_size),
@@ -768,8 +776,36 @@ impl Rows {
         })
     }
 
+    /// Create a `Rows` instance from a pre-existing `RecordBatch`.
+    ///
+    /// This is useful when you already have data in `RecordBatch` format and want to
+    /// send it using the `BulkStreamWriter`. This avoids the overhead of converting
+    /// the `RecordBatch` back to individual rows.
+    ///
+    /// # Note
+    ///
+    /// Once a `Rows` object is created from a `RecordBatch`, you cannot add more
+    /// rows to it.
+    pub fn from_record_batch(batch: RecordBatch) -> Result<Self> {
+        let schema = batch.schema();
+        let column_count = batch.num_columns();
+        Ok(Self {
+            data: RowsData::RecordBatch(batch),
+            schema,
+            column_count,
+            row_buffer: Vec::new(), // empty
+            buffer_size: 0,         // not applicable
+        })
+    }
+
     /// Add a row to the collection using move semantics
     pub fn add_row(&mut self, row: Row) -> Result<()> {
+        // Ensure we are in builder mode
+        ensure!(
+            matches!(self.data, RowsData::Builder(_)),
+            error::AddRowToBuiltBatchSnafu,
+        );
+
         // Validate column count matches schema
         ensure!(
             row.len() == self.column_count,
@@ -795,9 +831,11 @@ impl Rows {
             return Ok(());
         }
 
-        // Process all rows in the buffer at once for better performance
-        let rows = std::mem::take(&mut self.row_buffer);
-        self.builder.add_rows(rows)?;
+        if let RowsData::Builder(ref mut builder) = self.data {
+            // Process all rows in the buffer at once for better performance
+            let rows = std::mem::take(&mut self.row_buffer);
+            builder.add_rows(rows)?;
+        }
 
         Ok(())
     }
@@ -805,7 +843,10 @@ impl Rows {
     /// Get the current number of rows
     #[must_use]
     pub fn len(&self) -> usize {
-        self.builder.len() + self.row_buffer.len()
+        match &self.data {
+            RowsData::RecordBatch(batch) => batch.num_rows(),
+            RowsData::Builder(builder) => builder.len() + self.row_buffer.len(),
+        }
     }
 
     /// Check if the collection is empty
@@ -831,8 +872,18 @@ impl TryFrom<Rows> for RecordBatch {
         // Flush any remaining buffered rows to the builder
         rows.flush_buffer()?;
 
-        // Build the single RecordBatch
-        rows.builder.build()
+        match rows.data {
+            RowsData::RecordBatch(batch) => {
+                // If we have a pre-made batch, just return it.
+                // Ensure no pending rows in buffer, which would be a logic error.
+                ensure!(rows.row_buffer.is_empty(), error::UnflushedRowsSnafu);
+                Ok(batch)
+            }
+            RowsData::Builder(builder) => {
+                // Build the single RecordBatch
+                builder.build()
+            }
+        }
     }
 }
 
