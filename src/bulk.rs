@@ -1506,4 +1506,61 @@ mod tests {
         assert!(fields[2].is_nullable(), "Tag field should be nullable");
         assert_eq!(fields[2].name(), "tag");
     }
+
+    #[test]
+    fn test_rows_from_record_batch() {
+        // 1. Create a sample RecordBatch
+        let schema_vec = vec![
+            Column {
+                name: "id".to_string(),
+                data_type: ColumnDataType::Int32,
+                semantic_type: SemanticType::Field,
+                data_type_extension: None,
+            },
+            Column {
+                name: "msg".to_string(),
+                data_type: ColumnDataType::String,
+                semantic_type: SemanticType::Field,
+                data_type_extension: None,
+            },
+        ];
+        let record_batch = {
+            let mut sample_rows = Rows::new(&schema_vec, 2, 2).unwrap();
+            let row1 =
+                crate::table::Row::new().add_values(vec![Value::Int32(1), Value::String("hello".to_string())]);
+            let row2 =
+                crate::table::Row::new().add_values(vec![Value::Int32(2), Value::String("world".to_string())]);
+            sample_rows.add_row(row1).unwrap();
+            sample_rows.add_row(row2).unwrap();
+            RecordBatch::try_from(sample_rows).unwrap()
+        };
+
+        let original_schema = record_batch.schema();
+        let original_num_rows = record_batch.num_rows();
+        let original_num_cols = record_batch.num_columns();
+
+        // 2. Create Rows from the RecordBatch
+        let mut rows_from_batch = Rows::from_record_batch(record_batch.clone()).unwrap();
+
+        // 3. Verify schema, row count, and column count
+        assert_eq!(*rows_from_batch.schema(), *original_schema);
+        assert_eq!(rows_from_batch.len(), original_num_rows);
+        assert_eq!(rows_from_batch.column_count, original_num_cols);
+        assert!(!rows_from_batch.is_empty());
+        assert_eq!(rows_from_batch.len(), 2);
+
+        // 4. Ensure adding a new row fails
+        let row_to_add =
+            crate::table::Row::new().add_values(vec![Value::Int32(3), Value::String("new".to_string())]);
+        let add_result = rows_from_batch.add_row(row_to_add);
+        assert!(add_result.is_err());
+        assert_eq!(
+            add_result.unwrap_err().to_string(),
+            "Cannot add row to a Rows object that was created from a RecordBatch"
+        );
+
+        // 5. Verify that converting back yields the original RecordBatch
+        let converted_batch = RecordBatch::try_from(rows_from_batch).unwrap();
+        assert_eq!(converted_batch, record_batch);
+    }
 }
