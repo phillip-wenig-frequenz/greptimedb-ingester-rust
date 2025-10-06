@@ -186,9 +186,8 @@ impl BulkStreamWriter {
             .columns()
             .iter()
             .map(|col| {
-                let nullable = col.semantic_type != SemanticType::Timestamp;
                 column_to_arrow_data_type(col)
-                    .map(|data_type| Field::new(&col.name, data_type, nullable))
+                    .map(|data_type| Field::new(&col.name, data_type, col.nullable))
             })
             .collect();
         let arrow_schema = Arc::new(Schema::new(fields?));
@@ -1292,18 +1291,21 @@ mod tests {
                 data_type: ColumnDataType::Int64,
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
             Column {
                 name: "name".to_string(),
                 data_type: ColumnDataType::String,
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
             Column {
                 name: "timestamp".to_string(),
                 data_type: ColumnDataType::TimestampMillisecond,
                 semantic_type: SemanticType::Timestamp,
                 data_type_extension: None,
+                nullable: false,
             },
         ];
 
@@ -1314,12 +1316,14 @@ mod tests {
                 data_type: ColumnDataType::Int64,
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
             Column {
                 name: "value".to_string(),          // Different column name
                 data_type: ColumnDataType::Float64, // Different data type
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
         ];
 
@@ -1346,12 +1350,14 @@ mod tests {
                 data_type: ColumnDataType::Int64,
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
             Column {
                 name: "message".to_string(),
                 data_type: ColumnDataType::String,
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
         ];
 
@@ -1385,12 +1391,14 @@ mod tests {
                 data_type: ColumnDataType::TimestampMillisecond,
                 semantic_type: SemanticType::Timestamp,
                 data_type_extension: None,
+                nullable: false,
             },
             Column {
                 name: "value".to_string(),
                 data_type: ColumnDataType::Int64,
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
         ];
 
@@ -1420,12 +1428,14 @@ mod tests {
                 data_type: ColumnDataType::TimestampMillisecond,
                 semantic_type: SemanticType::Timestamp,
                 data_type_extension: None,
+                nullable: false,
             },
             Column {
                 name: "value".to_string(),
                 data_type: ColumnDataType::Int64,
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
         ];
 
@@ -1457,18 +1467,21 @@ mod tests {
                 data_type: ColumnDataType::TimestampMillisecond,
                 semantic_type: SemanticType::Timestamp,
                 data_type_extension: None,
+                nullable: false,
             },
             Column {
                 name: "value".to_string(),
                 data_type: ColumnDataType::Int64,
                 semantic_type: SemanticType::Field,
                 data_type_extension: None,
+                nullable: false,
             },
             Column {
                 name: "tag".to_string(),
                 data_type: ColumnDataType::String,
                 semantic_type: SemanticType::Tag,
                 data_type_extension: None,
+                nullable: false,
             },
         ];
 
