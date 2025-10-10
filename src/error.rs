@@ -173,6 +173,18 @@ pub enum Error {
         #[snafu(implicit)]
         location: Location,
     },
+
+    #[snafu(display("Cannot add row to a Rows object that was created from a RecordBatch"))]
+    AddRowToBuiltBatch {
+        #[snafu(implicit)]
+        location: Location,
+    },
+
+    #[snafu(display("Rows created from RecordBatch cannot have unflushed rows"))]
+    UnflushedRows {
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
