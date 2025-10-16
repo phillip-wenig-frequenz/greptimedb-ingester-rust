@@ -161,9 +161,9 @@ async fn test_bulk_stream_writer_sequential() -> Result<()> {
         .build()
         .unwrap()
         .add_timestamp("ts", ColumnDataType::TimestampMillisecond)
-        .add_field("sensor_id", ColumnDataType::String)
-        .add_field("temperature", ColumnDataType::Float64)
-        .add_field("status", ColumnDataType::Int64);
+        .add_field("sensor_id", ColumnDataType::String, false)
+        .add_field("temperature", ColumnDataType::Float64, false)
+        .add_field("status", ColumnDataType::Int64, false);
 
     let mut bulk_writer = bulk_inserter
         .create_bulk_stream_writer(
@@ -246,9 +246,9 @@ async fn test_bulk_stream_writer_parallel() -> Result<()> {
         .build()
         .unwrap()
         .add_timestamp("ts", ColumnDataType::TimestampMillisecond)
-        .add_field("sensor_id", ColumnDataType::String)
-        .add_field("temperature", ColumnDataType::Float64)
-        .add_field("status", ColumnDataType::Int64);
+        .add_field("sensor_id", ColumnDataType::String, false)
+        .add_field("temperature", ColumnDataType::Float64, false)
+        .add_field("status", ColumnDataType::Int64, false);
 
     let mut bulk_writer = bulk_inserter
         .create_bulk_stream_writer(

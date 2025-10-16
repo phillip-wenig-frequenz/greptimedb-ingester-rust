@@ -53,12 +53,18 @@ impl TableSchema {
     }
 
     /// Add a tag column (for indexing and grouping)
-    pub fn add_tag<T: Into<String>>(mut self, name: T, data_type: ColumnDataType) -> Self {
+    pub fn add_tag<T: Into<String>>(
+        mut self,
+        name: T,
+        data_type: ColumnDataType,
+        nullable: bool,
+    ) -> Self {
         self.columns.push(Column {
             name: name.into(),
             data_type,
             semantic_type: SemanticType::Tag,
             data_type_extension: None,
+            nullable,
         });
         self
     }
@@ -70,17 +76,24 @@ impl TableSchema {
             data_type,
             semantic_type: SemanticType::Timestamp,
             data_type_extension: None,
+            nullable: false,
         });
         self
     }
 
     /// Add a field column (measurement values)
-    pub fn add_field<T: Into<String>>(mut self, name: T, data_type: ColumnDataType) -> Self {
+    pub fn add_field<T: Into<String>>(
+        mut self,
+        name: T,
+        data_type: ColumnDataType,
+        nullable: bool,
+    ) -> Self {
         self.columns.push(Column {
             name: name.into(),
             data_type,
             semantic_type: SemanticType::Field,
             data_type_extension: None,
+            nullable,
         });
         self
     }
@@ -91,12 +104,14 @@ impl TableSchema {
         name: T,
         precision: u8,
         scale: i8,
+        nullable: bool,
     ) -> Self {
         self.columns.push(Column {
             name: name.into(),
             data_type: ColumnDataType::Decimal128,
             semantic_type: SemanticType::Field,
             data_type_extension: Some(DataTypeExtension::Decimal128 { precision, scale }),
+            nullable,
         });
         self
     }
@@ -110,6 +125,7 @@ pub struct Column {
     pub semantic_type: SemanticType,
     /// Extended type information for data types that need additional parameters
     pub data_type_extension: Option<DataTypeExtension>,
+    pub nullable: bool,
 }
 
 /// Represents a data row with type-safe value access

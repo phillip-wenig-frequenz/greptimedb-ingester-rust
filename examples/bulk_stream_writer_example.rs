@@ -151,9 +151,9 @@ async fn run_sequential_writes() -> Result<Duration> {
         .build()
         .unwrap()
         .add_timestamp("ts", ColumnDataType::TimestampMillisecond) // Index 0
-        .add_field("sensor_id", ColumnDataType::String) // Index 1
-        .add_field("temperature", ColumnDataType::Float64) // Index 2
-        .add_field("sensor_status", ColumnDataType::Int64); // Index 3
+        .add_field("sensor_id", ColumnDataType::String, false) // Index 1
+        .add_field("temperature", ColumnDataType::Float64, false) // Index 2
+        .add_field("sensor_status", ColumnDataType::Int64, false); // Index 3
 
     let mut bulk_writer = bulk_inserter
         .create_bulk_stream_writer(
@@ -233,9 +233,9 @@ async fn run_parallel_writes() -> Result<Duration> {
         .build()
         .unwrap()
         .add_timestamp("ts", ColumnDataType::TimestampMillisecond) // Index 0
-        .add_field("sensor_id", ColumnDataType::String) // Index 1
-        .add_field("temperature", ColumnDataType::Float64) // Index 2
-        .add_field("sensor_status", ColumnDataType::Int64); // Index 3
+        .add_field("sensor_id", ColumnDataType::String, false) // Index 1
+        .add_field("temperature", ColumnDataType::Float64, false) // Index 2
+        .add_field("sensor_status", ColumnDataType::Int64, false); // Index 3
 
     let mut bulk_writer = bulk_inserter
         .create_bulk_stream_writer(

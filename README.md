@@ -29,14 +29,14 @@ async fn main() -> Result<()> {
     // Connect to GreptimeDB
     let client = Client::with_urls(&["localhost:4001"]);
     let database = Database::new_with_dbname("public", client);
-    
+
     // Define schema
     let schema = vec![
         tag("device_id", ColumnDataType::String),
         timestamp("ts", ColumnDataType::TimestampMillisecond),
         field("temperature", ColumnDataType::Float64),
     ];
-    
+
     // Create data rows
     let rows = vec![Row {
         values: vec![
@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
             f64_value(23.5),
         ],
     }];
-    
+
     // Insert data with minimal latency
     let insert_request = RowInsertRequests {
         inserts: vec![RowInsertRequest {
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
             }),
         }],
     };
-    
+
     let affected_rows = database.insert(insert_request).await?;
     println!("Inserted {} rows", affected_rows);
     Ok(())
@@ -128,8 +128,8 @@ async fn main() -> greptimedb_ingester::Result<()> {
         .build()
         .unwrap()
         .add_timestamp("ts", ColumnDataType::TimestampMillisecond)
-        .add_field("device_id", ColumnDataType::String)
-        .add_field("temperature", ColumnDataType::Float64);
+        .add_field("device_id", ColumnDataType::String, false)
+        .add_field("temperature", ColumnDataType::Float64, false);
 
     // Create high-performance stream writer
     let mut bulk_writer = bulk_inserter
@@ -174,9 +174,9 @@ async fn main() -> greptimedb_ingester::Result<()> {
 }
 ```
 
-> **Important**: 
+> **Important**:
 > 1. **Manual Table Creation Required**: Bulk API does **not** create tables automatically. You must create the table beforehand using either:
->    - Insert API (which supports auto table creation), or 
+>    - Insert API (which supports auto table creation), or
 >    - SQL DDL statements (CREATE TABLE)
 > 2. **Schema Matching**: The table template in bulk API must exactly match the existing table schema.
 > 3. **Column Types**: For bulk operations, currently use `add_field()` instead of `add_tag()`. Tag columns are part of the primary key in GreptimeDB, but bulk operations don't yet support tables with tag columns. This limitation will be addressed in future versions.
@@ -218,7 +218,7 @@ Run with: `cargo run --example bulk_stream_writer_example`
 Each `BulkStreamWriter` is bound to a specific table schema, providing both safety and performance benefits:
 
 - **Schema Validation**: Automatic validation ensures data consistency
-- **Zero-Cost Optimization**: Schema-bound buffers share `Arc<Schema>` for ultra-fast validation  
+- **Zero-Cost Optimization**: Schema-bound buffers share `Arc<Schema>` for ultra-fast validation
 - **Type Safety**: Prevents common mistakes like field order errors
 - **Dynamic Growth**: Arrow builders automatically expand capacity as needed
 
@@ -232,7 +232,7 @@ async fn example(bulk_writer: &BulkStreamWriter, column_schemas: &[Column]) -> g
     let mut rows = bulk_writer.alloc_rows_buffer(10000, 1024)?;  // capacity: 10000, row_buffer_size: 1024
     // Shares Arc<Schema> with writer for optimal performance
     // Automatic schema compatibility
-    
+
     // Alternative: Direct allocation
     let mut rows = Rows::new(column_schemas, 10000, 1024)?;  // capacity: 10000, row_buffer_size: 1024
     // Requires schema conversion and validation overhead
@@ -250,7 +250,7 @@ fn create_row() -> Row {
     let ts = 1234567890i64;
     let device_id = "device001".to_string();
     let temperature = 25.0f64;
-    
+
     Row::new().add_values(vec![
         Value::TimestampMillisecond(ts),
         Value::String(device_id),
@@ -269,7 +269,7 @@ async fn example(bulk_writer: &BulkStreamWriter) -> greptimedb_ingester::Result<
     let ts = 1234567890i64;
     let device_id = "device001".to_string();
     let temperature = 25.0f64;
-    
+
     let row = bulk_writer.new_row()
         .set("timestamp", Value::TimestampMillisecond(ts))?
         .set("device_id", Value::String(device_id))?
@@ -313,14 +313,14 @@ async fn example(bulk_writer: &mut BulkStreamWriter, batches: Vec<Rows>) -> grep
         let id = bulk_writer.write_rows_async(batch).await?;
         request_ids.push(id);
     }
-    
+
     // Option 1: Wait for all pending requests
     let responses = bulk_writer.wait_for_all_pending().await?;
-    
+
     // Option 2: Wait for specific requests
     for request_id in request_ids {
         let response = bulk_writer.wait_for_response(request_id).await?;
-        println!("Request {} completed with {} rows", 
+        println!("Request {} completed with {} rows",
                  request_id, response.affected_rows());
     }
     Ok(())
@@ -357,12 +357,12 @@ fn process_row_data(row: &Row) {
     fn process_binary(_data: &[u8]) {
         // Process binary data
     }
-    
+
     // Type-safe value access
     if let Some(device_name) = row.get_string(1) {
         println!("Device: {}", device_name);
     }
-    
+
     // Binary data access
     if let Some(binary_data) = row.get_binary(5) {
         process_binary(&binary_data);
@@ -376,7 +376,7 @@ fn process_row_data(row: &Row) {
 - Use small batch sizes (200-1000 rows)
 - Monitor and optimize network round-trip times
 
-### For High-Throughput Applications  
+### For High-Throughput Applications
 - **Create tables manually first** - bulk API requires existing tables
 - Use parallelism=8-16 for network-bound workloads
 - Batch 2000-100000 rows per request for optimal performance
@@ -405,7 +405,7 @@ fn setup_client() -> Client {
         .timeout(Duration::from_secs(30))
         .connect_timeout(Duration::from_secs(5));
     let channel_manager = ChannelManager::with_config(channel_config);
-    Client::with_manager_and_urls(channel_manager, 
+    Client::with_manager_and_urls(channel_manager,
         &["localhost:4001"])
 }
 ```
@@ -439,7 +439,7 @@ async fn handle_insert(database: &Database, request: RowInsertRequests) {
 
 ### Core Types
 - `Client`: Connection management
-- `Database`: Low-level insert operations  
+- `Database`: Low-level insert operations
 - `BulkInserter`: High-level bulk operations
 - `BulkStreamWriter`: Streaming bulk writer
 - `Table`: Table schema definition
@@ -453,7 +453,7 @@ async fn handle_insert(database: &Database, request: RowInsertRequests) {
 
 **Bulk API:**
 - `bulk_writer.write_rows(rows)` - Submit and wait for completion
-- `bulk_writer.write_rows_async(rows)` - Submit without waiting  
+- `bulk_writer.write_rows_async(rows)` - Submit without waiting
 - `bulk_writer.wait_for_response(id)` - Wait for specific request
 - `bulk_writer.wait_for_all_pending()` - Wait for all pending requests
 - `bulk_writer.finish()` - Clean shutdown
